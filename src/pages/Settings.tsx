@@ -18,6 +18,7 @@ import {
 } from '../lib/notifications'
 import { useSettings, type ThemeMode, FONTS, PALETTES } from '../store/useSettings'
 import { useTour } from '../store/useTour'
+import { useInstall } from '../store/useInstall'
 import { cn } from '../lib/utils'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
@@ -55,6 +56,7 @@ export function Settings() {
   const set = s.set
   const templates = useTemplates()
   const startTour = useTour((t) => t.start)
+  const { deferred, installed, isIOS, promptInstall } = useInstall()
   const fileRef = useRef<HTMLInputElement>(null)
   const csvRef = useRef<HTMLInputElement>(null)
 
@@ -229,6 +231,37 @@ export function Settings() {
           <Button variant="outline" size="sm" onClick={startTour}>
             Replay tour
           </Button>
+        </SettingRow>
+        <SettingRow
+          label="Install app"
+          hint={
+            installed
+              ? 'Already installed on this device'
+              : isIOS
+                ? 'Tap Share → Add to Home Screen in Safari'
+                : 'Add to your home screen for offline use'
+          }
+        >
+          {installed ? (
+            <span className="text-sm font-semibold text-[var(--color-success)]">
+              Installed
+            </span>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!deferred && !isIOS}
+              onClick={() => {
+                if (isIOS)
+                  alert(
+                    'In Safari, tap the Share button, then "Add to Home Screen".',
+                  )
+                else promptInstall()
+              }}
+            >
+              Install
+            </Button>
+          )}
         </SettingRow>
         <SettingRow
           label="Device notifications"

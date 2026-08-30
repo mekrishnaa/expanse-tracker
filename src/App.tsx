@@ -3,6 +3,7 @@ import { Route, Routes } from 'react-router-dom'
 import { AppLayout } from './components/layout/AppLayout'
 import { PinLock } from './components/PinLock'
 import { PWAUpdatePrompt } from './components/PWAUpdatePrompt'
+import { InstallPrompt } from './components/InstallPrompt'
 
 const Dashboard = lazy(() =>
   import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })),
@@ -79,6 +80,7 @@ function App() {
         </Routes>
       </Suspense>
       <PWAUpdatePrompt />
+      <InstallPrompt />
     </PinLock>
   )
 }

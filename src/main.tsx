@@ -6,6 +6,10 @@ import App from './App.tsx'
 import { seedIfEmpty } from './db/seed'
 import { runReminderChecks } from './lib/notifications'
 import { applyTheme, useSettings } from './store/useSettings'
+import { initInstallListeners } from './store/useInstall'
+
+// Capture the browser's install prompt so we can surface a custom banner.
+initInstallListeners()
 
 // Apply saved theme before first paint and keep it in sync with the store.
 applyTheme(useSettings.getState())
