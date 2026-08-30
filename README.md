@@ -4,6 +4,8 @@ A beautiful, offline-first **Progressive Web App** for family budgeting and expe
 tracking. Works on Android, iOS, tablets, and desktop — installable, fast, and
 fully customizable.
 
+**🔗 Live demo:** https://expanse-tracker-olive.vercel.app/
+
 ## Features
 
 - 📊 **Dashboard** — greeting hero, wallet balance, budget ring, summary cards,
