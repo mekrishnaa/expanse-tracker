@@ -2,8 +2,10 @@ import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import { AppLayout } from './components/layout/AppLayout'
 import { PinLock } from './components/PinLock'
+import { AuthGate } from './components/AuthGate'
 import { PWAUpdatePrompt } from './components/PWAUpdatePrompt'
 import { InstallPrompt } from './components/InstallPrompt'
+import { useAutoSync } from './lib/useAutoSync'
 
 const Dashboard = lazy(() =>
   import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })),
@@ -57,30 +59,33 @@ function Loader() {
 }
 
 function App() {
+  useAutoSync()
   return (
     <PinLock>
-      <Suspense fallback={<Loader />}>
-        <Routes>
-          <Route element={<AppLayout />}>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/expenses" element={<Expenses />} />
-            <Route path="/income" element={<Income />} />
-            <Route path="/budget" element={<Budget />} />
-            <Route path="/savings" element={<Savings />} />
-            <Route path="/bills" element={<Bills />} />
-            <Route path="/members" element={<Members />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/calendar" element={<Calendar />} />
-            <Route path="/categories" element={<Categories />} />
-            <Route path="/accounts" element={<Accounts />} />
-            <Route path="/shopping" element={<ShoppingLists />} />
-            <Route path="/notes" element={<Notes />} />
-            <Route path="/settings" element={<Settings />} />
-          </Route>
-        </Routes>
-      </Suspense>
-      <PWAUpdatePrompt />
-      <InstallPrompt />
+      <AuthGate>
+        <Suspense fallback={<Loader />}>
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/expenses" element={<Expenses />} />
+              <Route path="/income" element={<Income />} />
+              <Route path="/budget" element={<Budget />} />
+              <Route path="/savings" element={<Savings />} />
+              <Route path="/bills" element={<Bills />} />
+              <Route path="/members" element={<Members />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/calendar" element={<Calendar />} />
+              <Route path="/categories" element={<Categories />} />
+              <Route path="/accounts" element={<Accounts />} />
+              <Route path="/shopping" element={<ShoppingLists />} />
+              <Route path="/notes" element={<Notes />} />
+              <Route path="/settings" element={<Settings />} />
+            </Route>
+          </Routes>
+        </Suspense>
+        <PWAUpdatePrompt />
+        <InstallPrompt />
+      </AuthGate>
     </PinLock>
   )
 }

@@ -30,6 +30,7 @@ import {
   Slider,
   Toggle,
 } from '../components/settings/controls'
+import { CloudSync } from '../components/settings/CloudSync'
 
 function Section({
   title,
@@ -359,6 +360,9 @@ export function Settings() {
           <Toggle checked={s.reduceMotion} onChange={(v) => set('reduceMotion', v)} />
         </SettingRow>
       </Section>
+
+      {/* Cloud Sync */}
+      <CloudSync />
 
       {/* Backup */}
       <Section title="Backup & Data" icon="💾">

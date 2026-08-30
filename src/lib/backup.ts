@@ -14,29 +14,42 @@ const TABLES = [
   'templates',
 ] as const
 
-export async function exportJSON() {
+/** Gather every table into a single serializable backup object. */
+export async function collectBackup() {
   const data: Record<string, unknown[]> = {}
   for (const name of TABLES) {
     data[name] = await db.table(name).toArray()
   }
+  return { version: 1, exportedAt: Date.now(), data }
+}
+
+/** Replace all local data with the contents of a backup object. */
+export async function applyBackup(
+  parsed: { data?: Record<string, unknown[]> } | Record<string, unknown[]>,
+) {
+  const data = (parsed as { data?: Record<string, unknown[]> }).data ??
+    (parsed as Record<string, unknown[]>)
+  await db.transaction('rw', db.tables, async () => {
+    for (const name of TABLES) {
+      if (!Array.isArray(data[name])) continue
+      await db.table(name).clear()
+      await db.table(name).bulkAdd(data[name] as unknown[])
+    }
+  })
+}
+
+export async function exportJSON() {
+  const backup = await collectBackup()
   download(
-    JSON.stringify({ version: 1, exportedAt: Date.now(), data }, null, 2),
+    JSON.stringify(backup, null, 2),
     `expense-backup-${new Date().toISOString().slice(0, 10)}.json`,
     'application/json',
   )
 }
 
 export async function importJSON(file: File) {
-  const text = await file.text()
-  const parsed = JSON.parse(text)
-  const data = parsed.data ?? parsed
-  await db.transaction('rw', db.tables, async () => {
-    for (const name of TABLES) {
-      if (!Array.isArray(data[name])) continue
-      await db.table(name).clear()
-      await db.table(name).bulkAdd(data[name])
-    }
-  })
+  const parsed = JSON.parse(await file.text())
+  await applyBackup(parsed)
 }
 
 export async function exportCSV() {
