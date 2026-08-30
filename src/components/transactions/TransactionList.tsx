@@ -1,12 +1,13 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { Pencil, Trash2 } from 'lucide-react'
-import { db } from '../../db/db'
+import { ChevronRight } from 'lucide-react'
+import { useState } from 'react'
 import type { Category, FamilyMember, Transaction } from '../../db/types'
 import { formatDate, useMoney } from '../../lib/format'
 import { useAllBudgets } from '../../lib/hooks'
 import { useSettings } from '../../store/useSettings'
 import { useUI } from '../../store/useUI'
 import { Icon } from '../ui/Icon'
+import { TransactionDetails } from './TransactionDetails'
 
 export function TransactionList({
   transactions,
@@ -21,6 +22,7 @@ export function TransactionList({
   const dateFormat = useSettings((s) => s.dateFormat)
   const openTxnModal = useUI((s) => s.openTxnModal)
   const budgets = useAllBudgets()
+  const [detail, setDetail] = useState<Transaction | null>(null)
   const catMap = new Map(categories.map((c) => [c.id, c]))
   const memMap = new Map(members.map((m) => [m.id, m]))
   const budgetMap = new Map(budgets.map((b) => [b.id, b]))
@@ -42,7 +44,11 @@ export function TransactionList({
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="group flex items-center gap-3 rounded-[calc(var(--radius)*0.7)] border border-[var(--color-border)] bg-[var(--color-surface)] p-3"
+              onClick={() => setDetail(t)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && setDetail(t)}
+              className="flex cursor-pointer items-center gap-3 rounded-[calc(var(--radius)*0.7)] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 transition-colors hover:bg-[var(--color-surface-2)] active:bg-[var(--color-surface-2)]"
             >
               <div
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-lg"
@@ -83,26 +89,23 @@ export function TransactionList({
                   {money(t.amount)}
                 </p>
               </div>
-              <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                <button
-                  onClick={() => openTxnModal(t.type, t)}
-                  aria-label="Edit"
-                  className="rounded-full p-1.5 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)]"
-                >
-                  <Pencil size={15} />
-                </button>
-                <button
-                  onClick={() => t.id && db.transactions.delete(t.id)}
-                  aria-label="Delete"
-                  className="rounded-full p-1.5 text-[var(--color-text-muted)] hover:bg-[var(--color-danger)]/15 hover:text-[var(--color-danger)]"
-                >
-                  <Trash2 size={15} />
-                </button>
-              </div>
+              <ChevronRight
+                size={18}
+                className="shrink-0 text-[var(--color-text-muted)]"
+              />
             </motion.li>
           )
         })}
       </AnimatePresence>
+
+      <TransactionDetails
+        txn={detail}
+        onClose={() => setDetail(null)}
+        onEdit={(t) => {
+          setDetail(null)
+          openTxnModal(t.type, t)
+        }}
+      />
     </ul>
   )
 }
