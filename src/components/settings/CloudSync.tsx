@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Bell, Cloud, CloudDownload, CloudUpload, LogOut } from 'lucide-react'
+import { Bell, CloudDownload, CloudUpload, LogIn, LogOut } from 'lucide-react'
 import { useAuth } from '../../store/useAuth'
+import { useUI } from '../../store/useUI'
 import { restoreFromCloud, syncToCloud } from '../../lib/cloud'
 import {
   getPushSubscription,
@@ -10,29 +11,12 @@ import {
 } from '../../lib/push'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
-import { Field, Input } from '../ui/Input'
 import { SettingRow, Toggle } from './controls'
 
-type Mode = 'login' | 'register'
-
 export function CloudSync() {
-  const {
-    user,
-    family,
-    login,
-    register,
-    logout,
-    loading,
-    error,
-    autoSync,
-    lastAutoSync,
-    setAutoSync,
-  } = useAuth()
-  const [mode, setMode] = useState<Mode>('login')
-  const [familyName, setFamilyName] = useState('')
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const { user, family, logout, autoSync, lastAutoSync, setAutoSync } =
+    useAuth()
+  const openLogin = useUI((s) => s.openLogin)
   const [busy, setBusy] = useState<null | 'sync' | 'restore'>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [pushOn, setPushOn] = useState(false)
@@ -60,17 +44,6 @@ export function CloudSync() {
       setMessage(`Push setup failed: ${(err as Error).message}`)
     } finally {
       setPushBusy(false)
-    }
-  }
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setMessage(null)
-    try {
-      if (mode === 'login') await login(email, password)
-      else await register(familyName, name, email, password)
-    } catch {
-      // error is surfaced from the store
     }
   }
 
@@ -115,86 +88,15 @@ export function CloudSync() {
       </div>
 
       {!user ? (
-        <form onSubmit={submit} className="space-y-3 py-2">
+        <div className="flex flex-col items-start gap-3 py-2">
           <p className="text-xs text-[var(--color-text-muted)]">
-            Sign in to back up your data to the cloud and sync across devices.
-            Your app keeps working offline either way.
+            You're using the app as a guest. Sign in to back up your data,
+            sync across devices, and get bill &amp; budget reminders.
           </p>
-
-          <div className="flex gap-1 rounded-full bg-[var(--color-surface-2)] p-1 w-fit">
-            {(['login', 'register'] as Mode[]).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setMode(m)}
-                className={
-                  'rounded-full px-3 py-1.5 text-xs font-semibold capitalize ' +
-                  (mode === m
-                    ? 'bg-[var(--color-primary)] text-white'
-                    : 'text-[var(--color-text-muted)]')
-                }
-              >
-                {m === 'login' ? 'Sign in' : 'Create account'}
-              </button>
-            ))}
-          </div>
-
-          {mode === 'register' && (
-            <>
-              <Field label="Family name">
-                <Input
-                  value={familyName}
-                  onChange={(e) => setFamilyName(e.target.value)}
-                  placeholder="The Smiths"
-                  required
-                />
-              </Field>
-              <Field label="Your name">
-                <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Alex"
-                  required
-                />
-              </Field>
-            </>
-          )}
-
-          <Field label="Email">
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-            />
-          </Field>
-          <Field label="Password" hint="At least 8 characters">
-            <Input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              minLength={8}
-              required
-            />
-          </Field>
-
-          {error && (
-            <p className="text-xs font-semibold text-[var(--color-danger)]">
-              {error}
-            </p>
-          )}
-
-          <Button type="submit" size="sm" disabled={loading}>
-            <Cloud size={16} />
-            {loading
-              ? 'Please wait…'
-              : mode === 'login'
-                ? 'Sign in'
-                : 'Create account'}
+          <Button size="sm" onClick={openLogin}>
+            <LogIn size={16} /> Sign in
           </Button>
-        </form>
+        </div>
       ) : (
         <div className="divide-y divide-[var(--color-border)]">
           <SettingRow

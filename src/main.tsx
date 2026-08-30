@@ -6,6 +6,7 @@ import App from './App.tsx'
 import { seedIfEmpty } from './db/seed'
 import { runReminderChecks } from './lib/notifications'
 import { applyTheme, useSettings } from './store/useSettings'
+import { useAuth } from './store/useAuth'
 import { initInstallListeners } from './store/useInstall'
 
 // Capture the browser's install prompt so we can surface a custom banner.
@@ -27,8 +28,8 @@ window
 // Seed default categories/accounts/member on first run.
 seedIfEmpty()
 
-// Fire local reminders for due bills / exceeded budgets (once per day per item).
-if (useSettings.getState().remindersEnabled) {
+// Fire local reminders for due bills / exceeded budgets (logged-in users only).
+if (useAuth.getState().user && useSettings.getState().remindersEnabled) {
   runReminderChecks()
 }
 

@@ -19,6 +19,7 @@ import {
 import { useSettings, type ThemeMode, FONTS, PALETTES } from '../store/useSettings'
 import { useTour } from '../store/useTour'
 import { useInstall } from '../store/useInstall'
+import { useAuth } from '../store/useAuth'
 import { cn } from '../lib/utils'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
@@ -58,6 +59,7 @@ export function Settings() {
   const templates = useTemplates()
   const startTour = useTour((t) => t.start)
   const { deferred, installed, isIOS, promptInstall } = useInstall()
+  const user = useAuth((a) => a.user)
   const fileRef = useRef<HTMLInputElement>(null)
   const csvRef = useRef<HTMLInputElement>(null)
 
@@ -222,14 +224,15 @@ export function Settings() {
             <option>YYYY-MM-DD</option>
           </Select>
         </SettingRow>
-        <SettingRow label="Reminders enabled">
-          <Toggle
-            checked={s.remindersEnabled}
-            onChange={(v) => set('remindersEnabled', v)}
-          />
-        </SettingRow>
-        <SettingRow label="App tour" hint="Replay the first-time walkthrough">
-          <Button variant="outline" size="sm" onClick={startTour}>
+        {user && (
+          <SettingRow label="Reminders enabled">
+            <Toggle
+              checked={s.remindersEnabled}
+              onChange={(v) => set('remindersEnabled', v)}
+            />
+          </SettingRow>
+        )}
+        <SettingRow label="App tour" hint="Replay the first-time walkthrough">          <Button variant="outline" size="sm" onClick={startTour}>
             Replay tour
           </Button>
         </SettingRow>
@@ -264,31 +267,33 @@ export function Settings() {
             </Button>
           )}
         </SettingRow>
-        <SettingRow
-          label="Device notifications"
-          hint={
-            !notificationsSupported()
-              ? 'Not supported on this device'
-              : notificationPermission() === 'granted'
-                ? 'Enabled — alerts for due bills & exceeded budgets'
-                : 'Get alerts for due bills & exceeded budgets'
-          }
-        >
-          {notificationPermission() === 'granted' ? (
-            <span className="text-sm font-semibold text-[var(--color-success)]">
-              Granted
-            </span>
-          ) : (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={enableNotifications}
-              disabled={!notificationsSupported()}
-            >
-              Enable
-            </Button>
-          )}
-        </SettingRow>
+        {user && (
+          <SettingRow
+            label="Device notifications"
+            hint={
+              !notificationsSupported()
+                ? 'Not supported on this device'
+                : notificationPermission() === 'granted'
+                  ? 'Enabled — alerts for due bills & exceeded budgets'
+                  : 'Get alerts for due bills & exceeded budgets'
+            }
+          >
+            {notificationPermission() === 'granted' ? (
+              <span className="text-sm font-semibold text-[var(--color-success)]">
+                Granted
+              </span>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={enableNotifications}
+                disabled={!notificationsSupported()}
+              >
+                Enable
+              </Button>
+            )}
+          </SettingRow>
+        )}
       </Section>
 
       {/* Quick templates */}
@@ -366,41 +371,49 @@ export function Settings() {
 
       {/* Backup */}
       <Section title="Backup & Data" icon="💾">
-        <div className="flex flex-wrap gap-2 py-3">
-          <Button variant="outline" size="sm" onClick={exportJSON}>
-            <Download size={16} /> Export JSON
-          </Button>
-          <Button variant="outline" size="sm" onClick={exportCSV}>
-            <Download size={16} /> Export CSV
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
-            <Upload size={16} /> Import JSON
-          </Button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/json"
-            className="hidden"
-            onChange={onImport}
-          />
-        </div>
-        <SettingRow
-          label="Bulk import transactions (CSV)"
-          hint="Add many transactions at once from a CSV file"
-        >
-          <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={downloadCSVTemplate}>
-              Template
+        {user && (
+          <div className="flex flex-wrap gap-2 py-3">
+            <Button variant="outline" size="sm" onClick={exportJSON}>
+              <Download size={16} /> Export JSON
+            </Button>
+            <Button variant="outline" size="sm" onClick={exportCSV}>
+              <Download size={16} /> Export CSV
             </Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => csvRef.current?.click()}
+              onClick={() => fileRef.current?.click()}
             >
-              <Upload size={16} /> Import
+              <Upload size={16} /> Import JSON
             </Button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="application/json"
+              className="hidden"
+              onChange={onImport}
+            />
           </div>
-        </SettingRow>
+        )}
+        {user && (
+          <SettingRow
+            label="Bulk import transactions (CSV)"
+            hint="Add many transactions at once from a CSV file"
+          >
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={downloadCSVTemplate}>
+                Template
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => csvRef.current?.click()}
+              >
+                <Upload size={16} /> Import
+              </Button>
+            </div>
+          </SettingRow>
+        )}
         <input
           ref={csvRef}
           type="file"

@@ -6,9 +6,12 @@ interface UIState {
   txnModalType: TxnType
   editingTxn: Transaction | null
   sidebarCollapsed: boolean
+  loginOpen: boolean
   openTxnModal: (type?: TxnType, txn?: Transaction | null) => void
   closeTxnModal: () => void
   toggleSidebar: () => void
+  openLogin: () => void
+  closeLogin: () => void
 }
 
 export const useUI = create<UIState>((set) => ({
@@ -16,8 +19,11 @@ export const useUI = create<UIState>((set) => ({
   txnModalType: 'expense',
   editingTxn: null,
   sidebarCollapsed: false,
+  loginOpen: false,
   openTxnModal: (type = 'expense', txn = null) =>
     set({ txnModalOpen: true, txnModalType: txn?.type ?? type, editingTxn: txn }),
   closeTxnModal: () => set({ txnModalOpen: false, editingTxn: null }),
   toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+  openLogin: () => set({ loginOpen: true }),
+  closeLogin: () => set({ loginOpen: false }),
 }))

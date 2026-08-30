@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { TransactionModal } from '../transactions/TransactionModal'
 import { Tour } from '../tour/Tour'
+import { LoginModal } from '../LoginModal'
 import { useTour } from '../../store/useTour'
 import { BottomNav } from './BottomNav'
 import { MobileDrawer } from './MobileDrawer'
@@ -32,6 +33,7 @@ export function AppLayout() {
       </div>
       <MobileDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
       <TransactionModal />
+      <LoginModal />
       <Tour />
     </div>
   )
