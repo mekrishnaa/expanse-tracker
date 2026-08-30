@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import { AppLayout } from './components/layout/AppLayout'
 import { PinLock } from './components/PinLock'
+import { PWAUpdatePrompt } from './components/PWAUpdatePrompt'
 
 const Dashboard = lazy(() =>
   import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })),
@@ -77,6 +78,7 @@ function App() {
           </Route>
         </Routes>
       </Suspense>
+      <PWAUpdatePrompt />
     </PinLock>
   )
 }
