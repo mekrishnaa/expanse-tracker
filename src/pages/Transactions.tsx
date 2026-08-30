@@ -23,11 +23,22 @@ export function TransactionsPage({ type }: { type: TxnType }) {
   const [q, setQ] = useState(params.get('q') ?? '')
   const [catFilter, setCatFilter] = useState('')
   const [memFilter, setMemFilter] = useState('')
+  const [monthFilter, setMonthFilter] = useState('')
+
+  // Distinct months (yyyy-mm) that actually have transactions of this type.
+  const months = useMemo(() => {
+    const set = new Set<string>()
+    for (const t of allTxns) {
+      if (t.type === type) set.add(t.date.slice(0, 7))
+    }
+    return [...set].sort().reverse()
+  }, [allTxns, type])
 
   const filtered = useMemo(() => {
     const query = q.toLowerCase()
     return allTxns
       .filter((t) => t.type === type)
+      .filter((t) => (monthFilter ? t.date.startsWith(monthFilter) : true))
       .filter((t) => (catFilter ? t.categoryId === Number(catFilter) : true))
       .filter((t) => (memFilter ? t.memberId === Number(memFilter) : true))
       .filter((t) =>
@@ -39,10 +50,16 @@ export function TransactionsPage({ type }: { type: TxnType }) {
               .includes(query)
           : true,
       )
-  }, [allTxns, type, catFilter, memFilter, q])
+  }, [allTxns, type, monthFilter, catFilter, memFilter, q])
 
   const total = filtered.reduce((a, t) => a + t.amount, 0)
   const cats = categories.filter((c) => c.type === type)
+
+  const monthLabel = (key: string) =>
+    new Date(
+      Number(key.slice(0, 4)),
+      Number(key.slice(5, 7)) - 1,
+    ).toLocaleString(undefined, { month: 'short', year: 'numeric' })
 
   return (
     <div>
@@ -57,12 +74,23 @@ export function TransactionsPage({ type }: { type: TxnType }) {
       />
 
       <Card className="mb-4">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Input
             placeholder="Search…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
+          <Select
+            value={monthFilter}
+            onChange={(e) => setMonthFilter(e.target.value)}
+          >
+            <option value="">All months</option>
+            {months.map((m) => (
+              <option key={m} value={m}>
+                {monthLabel(m)}
+              </option>
+            ))}
+          </Select>
           <Select value={catFilter} onChange={(e) => setCatFilter(e.target.value)}>
             <option value="">All categories</option>
             {cats.map((c) => (
