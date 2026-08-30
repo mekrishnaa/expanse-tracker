@@ -133,3 +133,19 @@ export interface Note {
   updatedAt: number
   createdAt: number
 }
+
+export interface Template {
+  id?: number
+  label: string // display name for the preset
+  emoji?: string
+  type: TxnType
+  amount?: number
+  categoryId?: number
+  budgetId?: number
+  memberId?: number
+  accountId?: number
+  paymentMethod?: string
+  description?: string
+  tags?: string[]
+  createdAt: number
+}

@@ -1,7 +1,21 @@
 import { useRef } from 'react'
-import { Check, Download, Upload } from 'lucide-react'
+import { Check, Download, Trash2, Upload } from 'lucide-react'
+import { db } from '../db/db'
 import { CURRENCIES } from '../lib/format'
-import { clearAllData, exportCSV, exportJSON, importJSON } from '../lib/backup'
+import {
+  clearAllData,
+  downloadCSVTemplate,
+  exportCSV,
+  exportJSON,
+  importJSON,
+  importTransactionsCSV,
+} from '../lib/backup'
+import { useTemplates } from '../lib/hooks'
+import {
+  notificationPermission,
+  notificationsSupported,
+  requestNotificationPermission,
+} from '../lib/notifications'
 import {
   FONTS,
   PALETTES,
@@ -43,7 +57,9 @@ function Section({
 export function Settings() {
   const s = useSettings()
   const set = s.set
+  const templates = useTemplates()
   const fileRef = useRef<HTMLInputElement>(null)
+  const csvRef = useRef<HTMLInputElement>(null)
 
   const onImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -51,6 +67,27 @@ export function Settings() {
     if (!confirm('Importing will replace all current data. Continue?')) return
     await importJSON(file)
     alert('Backup imported successfully.')
+  }
+
+  const onImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const count = await importTransactionsCSV(file)
+    alert(`Imported ${count} transaction${count === 1 ? '' : 's'}.`)
+    e.target.value = ''
+  }
+
+  const enableNotifications = async () => {
+    const result = await requestNotificationPermission()
+    if (result === 'granted') {
+      set('remindersEnabled', true)
+      new Notification('Reminders enabled', {
+        body: "You'll be notified about due bills and exceeded budgets.",
+        icon: '/icons/icon-192.png',
+      })
+    } else {
+      alert('Notification permission was not granted.')
+    }
   }
 
   return (
@@ -191,6 +228,64 @@ export function Settings() {
             onChange={(v) => set('remindersEnabled', v)}
           />
         </SettingRow>
+        <SettingRow
+          label="Device notifications"
+          hint={
+            !notificationsSupported()
+              ? 'Not supported on this device'
+              : notificationPermission() === 'granted'
+                ? 'Enabled — alerts for due bills & exceeded budgets'
+                : 'Get alerts for due bills & exceeded budgets'
+          }
+        >
+          {notificationPermission() === 'granted' ? (
+            <span className="text-sm font-semibold text-[var(--color-success)]">
+              Granted
+            </span>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={enableNotifications}
+              disabled={!notificationsSupported()}
+            >
+              Enable
+            </Button>
+          )}
+        </SettingRow>
+      </Section>
+
+      {/* Quick templates */}
+      <Section title="Quick Templates" icon="⭐">
+        {templates.length ? (
+          <div className="py-3">
+            {templates.map((t) => (
+              <div
+                key={t.id}
+                className="flex items-center justify-between py-2"
+              >
+                <span className="text-sm font-semibold">
+                  {t.emoji ?? '⭐'} {t.label}
+                  <span className="ml-2 text-xs font-normal capitalize text-[var(--color-text-muted)]">
+                    {t.type}
+                  </span>
+                </span>
+                <button
+                  onClick={() => t.id && db.templates.delete(t.id)}
+                  className="rounded-full p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-danger)]"
+                  aria-label="Delete template"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="py-3 text-xs text-[var(--color-text-muted)]">
+            Save a transaction as a template from the Add screen to get one-tap
+            entry here.
+          </p>
+        )}
       </Section>
 
       {/* Privacy */}
@@ -250,6 +345,30 @@ export function Settings() {
             onChange={onImport}
           />
         </div>
+        <SettingRow
+          label="Bulk import transactions (CSV)"
+          hint="Add many transactions at once from a CSV file"
+        >
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={downloadCSVTemplate}>
+              Template
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => csvRef.current?.click()}
+            >
+              <Upload size={16} /> Import
+            </Button>
+          </div>
+        </SettingRow>
+        <input
+          ref={csvRef}
+          type="file"
+          accept=".csv,text/csv"
+          className="hidden"
+          onChange={onImportCSV}
+        />
         <SettingRow label="Reset appearance" hint="Restore default theme">
           <Button variant="outline" size="sm" onClick={s.reset}>
             Reset

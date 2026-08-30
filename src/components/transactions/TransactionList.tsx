@@ -3,6 +3,7 @@ import { Pencil, Trash2 } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Category, FamilyMember, Transaction } from '../../db/types'
 import { formatDate, useMoney } from '../../lib/format'
+import { useAllBudgets } from '../../lib/hooks'
 import { useSettings } from '../../store/useSettings'
 import { useUI } from '../../store/useUI'
 import { Icon } from '../ui/Icon'
@@ -19,8 +20,10 @@ export function TransactionList({
   const money = useMoney()
   const dateFormat = useSettings((s) => s.dateFormat)
   const openTxnModal = useUI((s) => s.openTxnModal)
+  const budgets = useAllBudgets()
   const catMap = new Map(categories.map((c) => [c.id, c]))
   const memMap = new Map(members.map((m) => [m.id, m]))
+  const budgetMap = new Map(budgets.map((b) => [b.id, b]))
 
   return (
     <ul className="space-y-2">
@@ -28,6 +31,7 @@ export function TransactionList({
         {transactions.map((t) => {
           const cat = catMap.get(t.categoryId)
           const mem = memMap.get(t.memberId)
+          const budget = t.budgetId ? budgetMap.get(t.budgetId) : undefined
           const isIncome = t.type === 'income'
           const isTransfer = t.type === 'transfer'
           const color = cat?.color ?? 'var(--color-secondary)'
@@ -55,6 +59,14 @@ export function TransactionList({
                   {mem && ` · ${mem.avatar} ${mem.name}`}
                   {t.paymentMethod && ` · ${t.paymentMethod}`}
                 </p>
+                {budget?.name && (
+                  <span
+                    className="mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                    style={{ background: `${color}22`, color }}
+                  >
+                    {budget.name}
+                  </span>
+                )}
               </div>
               <div className="text-right">
                 <p

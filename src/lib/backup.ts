@@ -11,6 +11,7 @@ const TABLES = [
   'shoppingLists',
   'shoppingItems',
   'notes',
+  'templates',
 ] as const
 
 export async function exportJSON() {
@@ -68,6 +69,114 @@ export async function clearAllData() {
       await db.table(name).clear()
     }
   })
+}
+
+export function downloadCSVTemplate() {
+  const headers = [
+    'Date',
+    'Type',
+    'Amount',
+    'Category',
+    'Description',
+    'Merchant',
+    'Payment',
+  ]
+  const sample = [
+    '2026-01-15,expense,1200,Groceries,Weekly shopping,More Supermart,UPI',
+    '2026-01-01,income,50000,Salary,Monthly salary,,Bank',
+  ]
+  download(
+    [headers.join(','), ...sample].join('\n'),
+    'transactions-template.csv',
+    'text/csv',
+  )
+}
+
+/** Import transactions from a CSV that matches the export/template columns. */
+export async function importTransactionsCSV(file: File): Promise<number> {
+  const text = await file.text()
+  const rows = parseCSV(text)
+  if (rows.length < 2) return 0
+  const header = rows[0].map((h) => h.trim().toLowerCase())
+  const col = (name: string) => header.indexOf(name)
+  const iDate = col('date')
+  const iType = col('type')
+  const iAmount = col('amount')
+  const iCategory = col('category')
+  const iDesc = col('description')
+  const iMerchant = col('merchant')
+  const iPayment = col('payment')
+
+  const cats = await db.categories.toArray()
+  const catByName = new Map(cats.map((c) => [c.name.toLowerCase(), c.id]))
+
+  let added = 0
+  await db.transaction('rw', db.transactions, async () => {
+    for (let r = 1; r < rows.length; r++) {
+      const row = rows[r]
+      if (!row.length || !row[iAmount]) continue
+      const amount = Number(row[iAmount])
+      if (!isFinite(amount) || amount <= 0) continue
+      const rawType = (row[iType] ?? '').toLowerCase()
+      const type =
+        rawType === 'income' || rawType === 'transfer' ? rawType : 'expense'
+      await db.transactions.add({
+        type,
+        amount,
+        categoryId: catByName.get((row[iCategory] ?? '').toLowerCase()),
+        description: row[iDesc] || undefined,
+        merchant: row[iMerchant] || undefined,
+        paymentMethod: row[iPayment] || undefined,
+        date: normalizeDate(row[iDate]),
+        createdAt: Date.now(),
+      })
+      added++
+    }
+  })
+  return added
+}
+
+function normalizeDate(v: string): string {
+  if (!v) return new Date().toISOString().slice(0, 10)
+  const d = new Date(v)
+  return isNaN(d.getTime())
+    ? new Date().toISOString().slice(0, 10)
+    : d.toISOString().slice(0, 10)
+}
+
+/** Minimal CSV parser supporting quoted fields and escaped quotes. */
+function parseCSV(text: string): string[][] {
+  const rows: string[][] = []
+  let row: string[] = []
+  let field = ''
+  let inQuotes = false
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') {
+          field += '"'
+          i++
+        } else inQuotes = false
+      } else field += ch
+    } else if (ch === '"') {
+      inQuotes = true
+    } else if (ch === ',') {
+      row.push(field)
+      field = ''
+    } else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && text[i + 1] === '\n') i++
+      row.push(field)
+      field = ''
+      if (row.some((c) => c !== '')) rows.push(row)
+      row = []
+    } else field += ch
+  }
+  if (field !== '' || row.length) {
+    row.push(field)
+    if (row.some((c) => c !== '')) rows.push(row)
+  }
+  return rows
 }
 
 function download(content: string, filename: string, mime: string) {

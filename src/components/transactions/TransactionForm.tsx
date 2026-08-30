@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { Star } from 'lucide-react'
 import { db } from '../../db/db'
-import type { Transaction, TxnType } from '../../db/types'
+import type { Template, Transaction, TxnType } from '../../db/types'
 import {
   useAccounts,
   useBudgets,
   useCategories,
   useMembers,
+  useTemplates,
 } from '../../lib/hooks'
 import { todayISO } from '../../lib/format'
 import { Button } from '../ui/Button'
@@ -42,13 +44,16 @@ export function TransactionForm({
   const categories = useCategories()
   const members = useMembers()
   const accounts = useAccounts()
+  const templates = useTemplates()
   const [receipt, setReceipt] = useState<string | undefined>(editing?.receipt)
 
   const filteredCats = categories.filter((c) =>
     type === 'transfer' ? false : c.type === type,
   )
+  const typeTemplates = templates.filter((t) => t.type === type)
 
-  const { register, handleSubmit, reset, formState, watch } = useForm<FormValues>({
+  const { register, handleSubmit, reset, formState, watch, setValue, getValues } =
+    useForm<FormValues>({
     defaultValues: {
       amount: editing?.amount ?? ('' as unknown as number),
       categoryId: editing?.categoryId ? String(editing.categoryId) : '',
@@ -94,6 +99,38 @@ export function TransactionForm({
     r.readAsDataURL(file)
   }
 
+  const applyTemplate = (t: Template) => {
+    if (t.amount != null) setValue('amount', t.amount)
+    setValue('categoryId', t.categoryId ? String(t.categoryId) : '')
+    setValue('budgetId', t.budgetId ? String(t.budgetId) : '')
+    setValue('memberId', t.memberId ? String(t.memberId) : '')
+    setValue('accountId', t.accountId ? String(t.accountId) : '')
+    setValue('paymentMethod', t.paymentMethod ?? 'UPI')
+    setValue('description', t.description ?? '')
+    setValue('tags', t.tags?.join(', ') ?? '')
+  }
+
+  const saveTemplate = async () => {
+    const v = getValues()
+    const label = window.prompt('Name this template', v.description || '')
+    if (!label) return
+    await db.templates.add({
+      label,
+      type,
+      amount: v.amount ? Number(v.amount) : undefined,
+      categoryId: v.categoryId ? Number(v.categoryId) : undefined,
+      budgetId: v.budgetId ? Number(v.budgetId) : undefined,
+      memberId: v.memberId ? Number(v.memberId) : undefined,
+      accountId: v.accountId ? Number(v.accountId) : undefined,
+      paymentMethod: v.paymentMethod || undefined,
+      description: v.description || undefined,
+      tags: v.tags
+        ? v.tags.split(',').map((t) => t.trim()).filter(Boolean)
+        : undefined,
+      createdAt: Date.now(),
+    })
+  }
+
   const submit = handleSubmit(async (v) => {
     const payload: Transaction = {
       type,
@@ -125,6 +162,21 @@ export function TransactionForm({
 
   return (
     <form onSubmit={submit} className="space-y-4">
+      {type !== 'transfer' && typeTemplates.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {typeTemplates.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => applyTemplate(t)}
+              className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-1.5 text-xs font-semibold transition-colors hover:border-[var(--color-primary)]"
+            >
+              {t.emoji ?? '⭐'} {t.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       <Field label="Amount">
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-lg font-bold text-[var(--color-text-muted)]">
@@ -291,6 +343,16 @@ export function TransactionForm({
           {editing ? 'Save changes' : 'Add'}
         </Button>
       </div>
+
+      {type !== 'transfer' && !editing && (
+        <button
+          type="button"
+          onClick={saveTemplate}
+          className="flex w-full items-center justify-center gap-1.5 text-xs font-semibold text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-primary)]"
+        >
+          <Star size={14} /> Save as quick template
+        </button>
+      )}
     </form>
   )
 }

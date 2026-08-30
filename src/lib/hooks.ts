@@ -46,6 +46,16 @@ export function useBudgets(month = monthKey()) {
   )
 }
 
+export function useAllBudgets() {
+  return useLiveQuery(() => db.budgets.toArray(), []) ?? []
+}
+
+export function useTemplates() {
+  return (
+    useLiveQuery(() => db.templates.orderBy('createdAt').toArray(), []) ?? []
+  )
+}
+
 export function useGoals() {
   return useLiveQuery(() => db.goals.toArray(), []) ?? []
 }

@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
 import { seedIfEmpty } from './db/seed'
+import { runReminderChecks } from './lib/notifications'
 import { applyTheme, useSettings } from './store/useSettings'
 
 // Apply saved theme before first paint and keep it in sync with the store.
@@ -21,6 +22,11 @@ window
 
 // Seed default categories/accounts/member on first run.
 seedIfEmpty()
+
+// Fire local reminders for due bills / exceeded budgets (once per day per item).
+if (useSettings.getState().remindersEnabled) {
+  runReminderChecks()
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

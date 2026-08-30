@@ -9,6 +9,7 @@ import type {
   SavingsGoal,
   ShoppingItem,
   ShoppingList,
+  Template,
   Transaction,
 } from './types'
 
@@ -23,6 +24,7 @@ export class ExpenseDB extends Dexie {
   shoppingLists!: EntityTable<ShoppingList, 'id'>
   shoppingItems!: EntityTable<ShoppingItem, 'id'>
   notes!: EntityTable<Note, 'id'>
+  templates!: EntityTable<Template, 'id'>
 
   constructor() {
     super('FamilyExpenseTracker')
@@ -38,6 +40,9 @@ export class ExpenseDB extends Dexie {
       shoppingLists: '++id, createdAt',
       shoppingItems: '++id, listId, purchased',
       notes: '++id, updatedAt, pinned',
+    })
+    this.version(2).stores({
+      templates: '++id, type, createdAt',
     })
   }
 }
