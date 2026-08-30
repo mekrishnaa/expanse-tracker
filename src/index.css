@@ -1,0 +1,171 @@
+@import 'tailwindcss';
+
+/*
+ * Design system driven by CSS variables. These are updated at runtime by the
+ * settings store (see src/store/useSettings.ts) so themes/colors/typography
+ * can be customized live without a page refresh.
+ */
+:root {
+  /* Brand colors (hex, overridden by settings store) */
+  --color-primary: #10b981;
+  --color-secondary: #6366f1;
+  --color-accent: #f59e0b;
+
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+
+  /* Surfaces (light default) */
+  --color-bg: #f4f6fb;
+  --color-surface: #ffffff;
+  --color-surface-2: #f8fafc;
+  --color-border: #e6e9ef;
+  --color-text: #0f172a;
+  --color-text-muted: #64748b;
+
+  /* Typography */
+  --font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto,
+    sans-serif;
+  --font-scale: 1;
+  --font-weight: 400;
+  --letter-spacing: 0px;
+  --line-height: 1.5;
+
+  /* UI style */
+  --radius: 18px;
+  --shadow-strength: 1;
+  --space: 1;
+  --anim-speed: 1;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, calc(0.06 * var(--shadow-strength)));
+  --shadow-md: 0 8px 24px rgba(15, 23, 42, calc(0.08 * var(--shadow-strength)));
+  --shadow-lg: 0 20px 45px rgba(15, 23, 42, calc(0.12 * var(--shadow-strength)));
+
+  color-scheme: light;
+}
+
+.dark {
+  --color-bg: #0b1220;
+  --color-surface: #121a2b;
+  --color-surface-2: #0f1727;
+  --color-border: #223049;
+  --color-text: #e8eefc;
+  --color-text-muted: #93a3bd;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, calc(0.3 * var(--shadow-strength)));
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, calc(0.4 * var(--shadow-strength)));
+  --shadow-lg: 0 20px 45px rgba(0, 0, 0, calc(0.55 * var(--shadow-strength)));
+  color-scheme: dark;
+}
+
+/* Map CSS variables into Tailwind theme tokens */
+@theme inline {
+  --color-brand: var(--color-primary);
+  --color-brand-2: var(--color-secondary);
+  --color-brand-accent: var(--color-accent);
+  --color-ok: var(--color-success);
+  --color-warn: var(--color-warning);
+  --color-bad: var(--color-danger);
+
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-surface-2: var(--color-surface-2);
+  --color-line: var(--color-border);
+  --color-ink: var(--color-text);
+  --color-ink-muted: var(--color-text-muted);
+
+  --font-sans: var(--font-family);
+  --radius-app: var(--radius);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    font-family: var(--font-family);
+    font-size: calc(16px * var(--font-scale));
+    letter-spacing: var(--letter-spacing);
+    line-height: var(--line-height);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-weight: var(--font-weight);
+    min-height: 100svh;
+    overscroll-behavior-y: none;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  #root {
+    min-height: 100svh;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: var(--color-text);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 999px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+.reduce-motion * {
+  animation-duration: 0.001ms !important;
+  transition-duration: 0.001ms !important;
+}
+
+/* Glass surface utility toggled by settings */
+.glass .glassable {
+  background: color-mix(in srgb, var(--color-surface) 72%, transparent);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+}
+
+/* Reusable app surface */
+.surface {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes pop-in {
+  0% {
+    transform: scale(0.96);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

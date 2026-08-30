@@ -1,0 +1,276 @@
+import { useRef } from 'react'
+import { Check, Download, Upload } from 'lucide-react'
+import { CURRENCIES } from '../lib/format'
+import { clearAllData, exportCSV, exportJSON, importJSON } from '../lib/backup'
+import {
+  FONTS,
+  PALETTES,
+  useSettings,
+  type ThemeMode,
+} from '../store/useSettings'
+import { cn } from '../lib/utils'
+import { Button } from '../components/ui/Button'
+import { Card } from '../components/ui/Card'
+import { Select } from '../components/ui/Input'
+import { PageHeader } from '../components/ui/PageHeader'
+import {
+  ColorInput,
+  SettingRow,
+  Slider,
+  Toggle,
+} from '../components/settings/controls'
+
+function Section({
+  title,
+  icon,
+  children,
+}: {
+  title: string
+  icon: string
+  children: React.ReactNode
+}) {
+  return (
+    <Card className="mb-4">
+      <div className="mb-2 flex items-center gap-2">
+        <span className="text-xl">{icon}</span>
+        <h3 className="font-bold">{title}</h3>
+      </div>
+      <div className="divide-y divide-[var(--color-border)]">{children}</div>
+    </Card>
+  )
+}
+
+export function Settings() {
+  const s = useSettings()
+  const set = s.set
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const onImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!confirm('Importing will replace all current data. Continue?')) return
+    await importJSON(file)
+    alert('Backup imported successfully.')
+  }
+
+  return (
+    <div className="max-w-3xl">
+      <PageHeader title="Settings" subtitle="Make the app truly yours" />
+
+      {/* Appearance */}
+      <Section title="Appearance" icon="🎨">
+        <SettingRow label="Theme">
+          <div className="flex gap-1 rounded-full bg-[var(--color-surface-2)] p-1">
+            {(['light', 'dark', 'system'] as ThemeMode[]).map((m) => (
+              <button
+                key={m}
+                onClick={() => set('mode', m)}
+                className={cn(
+                  'rounded-full px-3 py-1.5 text-xs font-semibold capitalize',
+                  s.mode === m
+                    ? 'bg-[var(--color-primary)] text-white'
+                    : 'text-[var(--color-text-muted)]',
+                )}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+        </SettingRow>
+
+        <SettingRow label="Color palette" hint="Quick preset themes">
+          <div />
+        </SettingRow>
+        <div className="grid grid-cols-4 gap-2 pb-3 sm:grid-cols-8">
+          {PALETTES.map((p) => (
+            <button
+              key={p.name}
+              onClick={() => s.applyPalette(p)}
+              title={p.name}
+              className={cn(
+                'flex h-10 items-center justify-center rounded-xl',
+                s.primary === p.primary && 'ring-2 ring-offset-2 ring-offset-[var(--color-surface)]',
+              )}
+              style={{
+                background: `linear-gradient(135deg, ${p.primary}, ${p.secondary})`,
+              }}
+            >
+              {s.primary === p.primary && (
+                <Check size={16} className="text-white" />
+              )}
+            </button>
+          ))}
+        </div>
+
+        <SettingRow label="Primary color">
+          <ColorInput value={s.primary} onChange={(v) => set('primary', v)} />
+        </SettingRow>
+        <SettingRow label="Secondary color">
+          <ColorInput value={s.secondary} onChange={(v) => set('secondary', v)} />
+        </SettingRow>
+        <SettingRow label="Accent color">
+          <ColorInput value={s.accent} onChange={(v) => set('accent', v)} />
+        </SettingRow>
+
+        <SettingRow label="Rounded corners" hint={`${s.radius}px`}>
+          <Slider value={s.radius} min={0} max={32} onChange={(v) => set('radius', v)} />
+        </SettingRow>
+        <SettingRow label="Shadow intensity">
+          <Slider value={s.shadow} min={0} max={2} step={0.25} onChange={(v) => set('shadow', v)} />
+        </SettingRow>
+        <SettingRow label="Animation speed">
+          <Slider value={s.animSpeed} min={0.5} max={2} step={0.25} onChange={(v) => set('animSpeed', v)} />
+        </SettingRow>
+        <SettingRow label="Compact spacing">
+          <Toggle
+            checked={s.spacing === 'compact'}
+            onChange={(v) => set('spacing', v ? 'compact' : 'comfortable')}
+          />
+        </SettingRow>
+        <SettingRow label="Glassmorphism">
+          <Toggle checked={s.glass} onChange={(v) => set('glass', v)} />
+        </SettingRow>
+      </Section>
+
+      {/* Typography */}
+      <Section title="Typography" icon="🔤">
+        <SettingRow label="Font family">
+          <Select
+            value={s.fontFamily}
+            onChange={(e) => set('fontFamily', e.target.value)}
+            className="w-40"
+          >
+            {FONTS.map((f) => (
+              <option key={f}>{f}</option>
+            ))}
+          </Select>
+        </SettingRow>
+        <SettingRow label="Font size" hint={`${Math.round(s.fontScale * 100)}%`}>
+          <Slider value={s.fontScale} min={0.85} max={1.3} step={0.05} onChange={(v) => set('fontScale', v)} />
+        </SettingRow>
+        <SettingRow label="Font weight">
+          <Slider value={s.fontWeight} min={300} max={600} step={100} onChange={(v) => set('fontWeight', v)} />
+        </SettingRow>
+        <SettingRow label="Letter spacing">
+          <Slider value={s.letterSpacing} min={-1} max={2} step={0.25} onChange={(v) => set('letterSpacing', v)} />
+        </SettingRow>
+        <SettingRow label="Line height">
+          <Slider value={s.lineHeight} min={1.2} max={2} step={0.1} onChange={(v) => set('lineHeight', v)} />
+        </SettingRow>
+      </Section>
+
+      {/* Preferences */}
+      <Section title="Preferences" icon="⚙️">
+        <SettingRow label="Currency">
+          <Select
+            value={s.currency}
+            onChange={(e) => set('currency', e.target.value)}
+            className="w-44"
+          >
+            {Object.entries(CURRENCIES).map(([code, c]) => (
+              <option key={code} value={code}>
+                {c.symbol} {code}
+              </option>
+            ))}
+          </Select>
+        </SettingRow>
+        <SettingRow label="Date format">
+          <Select
+            value={s.dateFormat}
+            onChange={(e) => set('dateFormat', e.target.value)}
+            className="w-40"
+          >
+            <option>DD/MM/YYYY</option>
+            <option>MM/DD/YYYY</option>
+            <option>YYYY-MM-DD</option>
+          </Select>
+        </SettingRow>
+        <SettingRow label="Reminders enabled">
+          <Toggle
+            checked={s.remindersEnabled}
+            onChange={(v) => set('remindersEnabled', v)}
+          />
+        </SettingRow>
+      </Section>
+
+      {/* Privacy */}
+      <Section title="Privacy & Security" icon="🔒">
+        <SettingRow label="Hide balances" hint="Blur amounts by default">
+          <Toggle checked={s.hideBalances} onChange={(v) => set('hideBalances', v)} />
+        </SettingRow>
+        <SettingRow label="PIN lock" hint="Ask for a PIN on open">
+          <Toggle
+            checked={s.pinEnabled}
+            onChange={(v) => {
+              if (v) {
+                const pin = prompt('Set a 4-digit PIN') ?? ''
+                if (/^\d{4}$/.test(pin)) {
+                  set('pin', pin)
+                  set('pinEnabled', true)
+                } else if (pin) alert('PIN must be 4 digits.')
+              } else {
+                set('pinEnabled', false)
+                set('pin', '')
+              }
+            }}
+          />
+        </SettingRow>
+      </Section>
+
+      {/* Accessibility */}
+      <Section title="Accessibility" icon="♿">
+        <SettingRow label="Large text">
+          <Toggle checked={s.largeText} onChange={(v) => set('largeText', v)} />
+        </SettingRow>
+        <SettingRow label="High contrast">
+          <Toggle checked={s.highContrast} onChange={(v) => set('highContrast', v)} />
+        </SettingRow>
+        <SettingRow label="Reduce motion">
+          <Toggle checked={s.reduceMotion} onChange={(v) => set('reduceMotion', v)} />
+        </SettingRow>
+      </Section>
+
+      {/* Backup */}
+      <Section title="Backup & Data" icon="💾">
+        <div className="flex flex-wrap gap-2 py-3">
+          <Button variant="outline" size="sm" onClick={exportJSON}>
+            <Download size={16} /> Export JSON
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportCSV}>
+            <Download size={16} /> Export CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+            <Upload size={16} /> Import JSON
+          </Button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="application/json"
+            className="hidden"
+            onChange={onImport}
+          />
+        </div>
+        <SettingRow label="Reset appearance" hint="Restore default theme">
+          <Button variant="outline" size="sm" onClick={s.reset}>
+            Reset
+          </Button>
+        </SettingRow>
+        <SettingRow label="Clear all data" hint="Deletes every transaction">
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={() => {
+              if (confirm('Delete ALL data permanently?')) clearAllData()
+            }}
+          >
+            Delete
+          </Button>
+        </SettingRow>
+      </Section>
+
+      <p className="pb-4 text-center text-xs text-[var(--color-text-muted)]">
+        Family Expense Tracker · Offline-first PWA · All data stays on this device.
+      </p>
+    </div>
+  )
+}
