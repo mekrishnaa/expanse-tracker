@@ -1,6 +1,18 @@
 export type TxnType = 'expense' | 'income' | 'transfer'
 
-export type MemberRole = 'admin' | 'parent' | 'child' | 'guest'
+export type MemberRole =
+  | 'admin'
+  | 'parent'
+  | 'spouse'
+  | 'child'
+  | 'sibling'
+  | 'grandparent'
+  | 'uncle'
+  | 'aunt'
+  | 'cousin'
+  | 'friend'
+  | 'guest'
+  | 'other'
 
 export interface FamilyMember {
   id?: number

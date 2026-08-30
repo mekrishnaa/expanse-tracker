@@ -10,7 +10,20 @@ import { Field, Input, Select } from '../components/ui/Input'
 import { Modal } from '../components/ui/Modal'
 import { PageHeader } from '../components/ui/PageHeader'
 
-const ROLES: MemberRole[] = ['admin', 'parent', 'child', 'guest']
+const ROLES: MemberRole[] = [
+  'admin',
+  'parent',
+  'spouse',
+  'child',
+  'sibling',
+  'grandparent',
+  'uncle',
+  'aunt',
+  'cousin',
+  'friend',
+  'guest',
+  'other',
+]
 const AVATARS = ['🙂', '👩', '👨', '👧', '👦', '👵', '👴', '🧑', '👶', '🐶']
 const COLORS = ['#10b981', '#6366f1', '#f59e0b', '#ef4444', '#0ea5e9', '#ec4899', '#8b5cf6']
 
