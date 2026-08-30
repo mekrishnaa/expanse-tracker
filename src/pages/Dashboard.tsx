@@ -31,6 +31,7 @@ import {
 import { greeting, monthKey, useMoney } from '../lib/format'
 import { dailySeries, totalsByCategory, totalsFor } from '../lib/stats'
 import { useUI } from '../store/useUI'
+import { useAuth } from '../store/useAuth'
 import { Card } from '../components/ui/Card'
 import { ProgressRing } from '../components/ui/ProgressRing'
 import { TransactionList } from '../components/transactions/TransactionList'
@@ -39,6 +40,8 @@ import { EmptyState } from '../components/ui/EmptyState'
 export function Dashboard() {
   const money = useMoney()
   const openTxnModal = useUI((s) => s.openTxnModal)
+  const user = useAuth((a) => a.user)
+  const firstName = user?.name?.trim().split(' ')[0] || 'Family'
   const monthTxns = useMonthTransactions()
   const allTxns = useTransactions()
   const categories = useCategories()
@@ -94,7 +97,7 @@ export function Dashboard() {
       >
         <div className="relative z-10">
           <p className="text-sm/relaxed opacity-90">
-            {greeting()}, Family 👋
+            {greeting()}, {firstName} 👋
           </p>
           <p className="mt-0.5 text-xs opacity-75">
             {now.toLocaleDateString(undefined, {
