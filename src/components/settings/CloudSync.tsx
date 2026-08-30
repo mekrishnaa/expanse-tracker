@@ -1,7 +1,13 @@
-import { useState } from 'react'
-import { Cloud, CloudDownload, CloudUpload, LogOut } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Bell, Cloud, CloudDownload, CloudUpload, LogOut } from 'lucide-react'
 import { useAuth } from '../../store/useAuth'
 import { restoreFromCloud, syncToCloud } from '../../lib/cloud'
+import {
+  getPushSubscription,
+  pushSupported,
+  subscribeToPush,
+  unsubscribeFromPush,
+} from '../../lib/push'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
 import { Field, Input } from '../ui/Input'
@@ -29,6 +35,33 @@ export function CloudSync() {
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState<null | 'sync' | 'restore'>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [pushOn, setPushOn] = useState(false)
+  const [pushBusy, setPushBusy] = useState(false)
+
+  useEffect(() => {
+    if (!user || !pushSupported()) return
+    getPushSubscription().then((sub) => setPushOn(Boolean(sub)))
+  }, [user])
+
+  const togglePush = async () => {
+    setPushBusy(true)
+    setMessage(null)
+    try {
+      if (pushOn) {
+        await unsubscribeFromPush()
+        setPushOn(false)
+        setMessage('Push reminders disabled on this device.')
+      } else {
+        await subscribeToPush()
+        setPushOn(true)
+        setMessage('Push reminders enabled on this device.')
+      }
+    } catch (err) {
+      setMessage(`Push setup failed: ${(err as Error).message}`)
+    } finally {
+      setPushBusy(false)
+    }
+  }
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -212,6 +245,25 @@ export function CloudSync() {
             }
           >
             <Toggle checked={autoSync} onChange={setAutoSync} />
+          </SettingRow>
+
+          <SettingRow
+            label="Push reminders (this device)"
+            hint={
+              pushSupported()
+                ? 'Get bill & budget alerts even when the app is closed'
+                : 'Not supported on this browser'
+            }
+          >
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={togglePush}
+              disabled={pushBusy || !pushSupported()}
+            >
+              <Bell size={16} />
+              {pushBusy ? 'Working…' : pushOn ? 'Disable' : 'Enable'}
+            </Button>
           </SettingRow>
 
           {message && (

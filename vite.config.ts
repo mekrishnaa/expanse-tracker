@@ -15,6 +15,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
         cleanupOutdatedCaches: true,
         clientsClaim: true,
+        importScripts: ['push-sw.js'],
       },
       manifest: {
         name: 'Family Expense Tracker',
