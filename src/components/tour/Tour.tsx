@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
+import { X } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Button } from '../ui/Button'
@@ -163,6 +164,13 @@ export function Tour() {
           className="absolute w-[min(320px,calc(100vw-24px))] rounded-[var(--radius)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-lg)]"
           style={cardStyle}
         >
+          <button
+            onClick={() => stop()}
+            aria-label="Close tour"
+            className="absolute right-3 top-3 rounded-full p-1 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-2)]"
+          >
+            <X size={16} />
+          </button>
           <div className="mb-3 flex items-center gap-1.5">
             {STEPS.map((_, i) => (
               <span
