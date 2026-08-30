@@ -16,12 +16,8 @@ import {
   notificationsSupported,
   requestNotificationPermission,
 } from '../lib/notifications'
-import {
-  FONTS,
-  PALETTES,
-  useSettings,
-  type ThemeMode,
-} from '../store/useSettings'
+import { useSettings, type ThemeMode, FONTS, PALETTES } from '../store/useSettings'
+import { useTour } from '../store/useTour'
 import { cn } from '../lib/utils'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
@@ -58,6 +54,7 @@ export function Settings() {
   const s = useSettings()
   const set = s.set
   const templates = useTemplates()
+  const startTour = useTour((t) => t.start)
   const fileRef = useRef<HTMLInputElement>(null)
   const csvRef = useRef<HTMLInputElement>(null)
 
@@ -227,6 +224,11 @@ export function Settings() {
             checked={s.remindersEnabled}
             onChange={(v) => set('remindersEnabled', v)}
           />
+        </SettingRow>
+        <SettingRow label="App tour" hint="Replay the first-time walkthrough">
+          <Button variant="outline" size="sm" onClick={startTour}>
+            Replay tour
+          </Button>
         </SettingRow>
         <SettingRow
           label="Device notifications"

@@ -32,7 +32,10 @@ export function BottomNav() {
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 lg:hidden">
-      <div className="glassable relative mx-auto flex max-w-lg items-center border-t border-[var(--color-border)] bg-[var(--color-surface)] px-2 pb-[env(safe-area-inset-bottom)] pt-1">
+      <div
+        data-tour="nav"
+        className="glassable relative mx-auto flex max-w-lg items-center border-t border-[var(--color-border)] bg-[var(--color-surface)] px-2 pb-[env(safe-area-inset-bottom)] pt-1"
+      >
         {left.map(link)}
         <div className="w-16 shrink-0" />
         {right.map(link)}
@@ -41,6 +44,7 @@ export function BottomNav() {
           whileTap={{ scale: 0.9 }}
           onClick={() => openTxnModal('expense')}
           aria-label="Add transaction"
+          data-tour="add"
           className="absolute -top-6 left-1/2 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-[var(--color-primary)] text-white shadow-[var(--shadow-lg)] ring-4 ring-[var(--color-bg)]"
         >
           <Plus size={26} />

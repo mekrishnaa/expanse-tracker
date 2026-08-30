@@ -31,7 +31,11 @@ export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
         <Menu size={22} />
       </button>
 
-      <form onSubmit={submitSearch} className="relative flex-1 max-w-md">
+      <form
+        onSubmit={submitSearch}
+        data-tour="search"
+        className="relative flex-1 max-w-md"
+      >
         <Search
           size={18}
           className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]"
@@ -55,12 +59,14 @@ export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
         <button
           onClick={toggleTheme}
           aria-label="Toggle theme"
+          data-tour="theme"
           className="rounded-full p-2.5 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)]"
         >
           {mode === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
         </button>
         <Button
           size="sm"
+          data-tour="add"
           className="hidden sm:inline-flex"
           onClick={() => openTxnModal('expense')}
         >
