@@ -116,11 +116,26 @@ export function Tour() {
   const vh = window.innerHeight
 
   // Tooltip position
+  const isMobile = vw < 640
   let cardStyle: React.CSSProperties
-  if (!rect) {
+  if (isMobile) {
+    // Dock as a full-width sheet so it can never overflow the screen.
+    // If the highlight sits in the lower half, show the card at the top
+    // (and vice-versa) so both stay visible.
+    const targetLow = rect ? rect.top + rect.height / 2 > vh / 2 : false
+    cardStyle = {
+      left: 12,
+      right: 12,
+      width: 'auto',
+      ...(targetLow
+        ? { top: 'calc(16px + env(safe-area-inset-top))' }
+        : { bottom: 'calc(16px + env(safe-area-inset-bottom))' }),
+    }
+  } else if (!rect) {
     cardStyle = {
       left: '50%',
       top: '50%',
+      width: CARD_W,
       transform: 'translate(-50%, -50%)',
     }
   } else {
@@ -129,7 +144,7 @@ export function Tour() {
     const top = placeBelow ? below : Math.max(12, rect.top - 190 - 12)
     let left = rect.left + rect.width / 2 - CARD_W / 2
     left = Math.max(12, Math.min(left, vw - CARD_W - 12))
-    cardStyle = { left, top }
+    cardStyle = { left, top, width: CARD_W }
   }
 
   return createPortal(
@@ -161,7 +176,7 @@ export function Tour() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
-          className="absolute w-[min(320px,calc(100vw-24px))] rounded-[var(--radius)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-lg)]"
+          className="absolute max-w-[calc(100vw-24px)] rounded-[var(--radius)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-lg)]"
           style={cardStyle}
         >
           <button
