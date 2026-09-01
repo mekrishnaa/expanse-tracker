@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Bell, CloudDownload, CloudUpload, LogIn, LogOut } from 'lucide-react'
+import { Bell, CloudDownload, LogIn, LogOut, WifiOff } from 'lucide-react'
 import { useAuth } from '../../store/useAuth'
 import { useUI } from '../../store/useUI'
-import { restoreFromCloud, syncToCloud } from '../../lib/cloud'
+import { restoreFromCloud } from '../../lib/cloud'
+import { withSyncSuspended } from '../../db/db'
+import { pendingSyncCount, resetSyncState } from '../../lib/sync'
 import {
   getPushSubscription,
   pushSupported,
@@ -11,21 +13,41 @@ import {
 } from '../../lib/push'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
-import { SettingRow, Toggle } from './controls'
+import { SettingRow } from './controls'
 
 export function CloudSync() {
-  const { user, family, logout, autoSync, lastAutoSync, setAutoSync } =
-    useAuth()
+  const { user, family, logout } = useAuth()
   const openLogin = useUI((s) => s.openLogin)
-  const [busy, setBusy] = useState<null | 'sync' | 'restore'>(null)
+  const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [pushOn, setPushOn] = useState(false)
   const [pushBusy, setPushBusy] = useState(false)
+  const [pending, setPending] = useState(0)
+  const [online, setOnline] = useState(navigator.onLine)
 
   useEffect(() => {
     if (!user || !pushSupported()) return
     getPushSubscription().then((sub) => setPushOn(Boolean(sub)))
   }, [user])
+
+  useEffect(() => {
+    if (!user) return
+    const tick = () => pendingSyncCount().then(setPending)
+    tick()
+    const id = setInterval(tick, 3000)
+    return () => clearInterval(id)
+  }, [user])
+
+  useEffect(() => {
+    const on = () => setOnline(true)
+    const off = () => setOnline(false)
+    window.addEventListener('online', on)
+    window.addEventListener('offline', off)
+    return () => {
+      window.removeEventListener('online', on)
+      window.removeEventListener('offline', off)
+    }
+  }, [])
 
   const togglePush = async () => {
     setPushBusy(true)
@@ -47,36 +69,25 @@ export function CloudSync() {
     }
   }
 
-  const onSync = async () => {
-    if (!confirm('Upload all local data to the cloud, replacing cloud data?'))
-      return
-    setBusy('sync')
-    setMessage(null)
-    try {
-      const inserted = await syncToCloud()
-      const total = Object.values(inserted).reduce((a, b) => a + b, 0)
-      setMessage(`Synced ${total} records to the cloud.`)
-    } catch (err) {
-      setMessage(`Sync failed: ${(err as Error).message}`)
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  const onRestore = async () => {
+  const onForceRefresh = async () => {
     if (
-      !confirm('Download cloud data and REPLACE all local data on this device?')
+      !confirm(
+        'Replace all local data on this device with the latest data from the server?',
+      )
     )
       return
-    setBusy('restore')
+    setBusy(true)
     setMessage(null)
     try {
-      await restoreFromCloud()
-      setMessage('Local data restored from the cloud.')
+      await withSyncSuspended(() => restoreFromCloud())
+      // Local ids were just renumbered by the restore, so previous
+      // server-id mappings and any queued changes no longer apply.
+      await resetSyncState()
+      setMessage('Local data refreshed from the server.')
     } catch (err) {
-      setMessage(`Restore failed: ${(err as Error).message}`)
+      setMessage(`Refresh failed: ${(err as Error).message}`)
     } finally {
-      setBusy(null)
+      setBusy(false)
     }
   }
 
@@ -109,44 +120,37 @@ export function CloudSync() {
           </SettingRow>
 
           <SettingRow
-            label="Sync to cloud"
-            hint="Upload this device's data, replacing cloud data"
-          >
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onSync}
-              disabled={busy !== null}
-            >
-              <CloudUpload size={16} />
-              {busy === 'sync' ? 'Syncing…' : 'Sync'}
-            </Button>
-          </SettingRow>
-
-          <SettingRow
-            label="Restore from cloud"
-            hint="Replace this device's data with cloud data"
-          >
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onRestore}
-              disabled={busy !== null}
-            >
-              <CloudDownload size={16} />
-              {busy === 'restore' ? 'Restoring…' : 'Restore'}
-            </Button>
-          </SettingRow>
-
-          <SettingRow
-            label="Nightly auto-sync"
+            label={online ? 'Synced automatically' : 'Offline'}
             hint={
-              lastAutoSync
-                ? `Last auto-sync: ${lastAutoSync}`
-                : 'Automatically upload data to the cloud overnight'
+              !online
+                ? `${pending} change${pending === 1 ? '' : 's'} queued — will sync when you're back online`
+                : pending > 0
+                  ? `${pending} change${pending === 1 ? '' : 's'} syncing…`
+                  : 'Every change is saved to the cloud in real time'
             }
           >
-            <Toggle checked={autoSync} onChange={setAutoSync} />
+            {!online ? (
+              <WifiOff size={18} className="text-[var(--color-text-muted)]" />
+            ) : pending > 0 ? (
+              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[var(--color-warning)]" />
+            ) : (
+              <span className="h-2.5 w-2.5 rounded-full bg-[var(--color-success)]" />
+            )}
+          </SettingRow>
+
+          <SettingRow
+            label="Force refresh from server"
+            hint="Replace this device's data with the latest from the server"
+          >
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onForceRefresh}
+              disabled={busy}
+            >
+              <CloudDownload size={16} />
+              {busy ? 'Refreshing…' : 'Refresh'}
+            </Button>
           </SettingRow>
 
           <SettingRow

@@ -13,6 +13,74 @@ import type {
   Transaction,
 } from './types'
 
+/** A pending change waiting to be pushed to the server (offline queue). */
+export interface SyncQueueItem {
+  id?: number
+  entity: SyncEntity
+  op: 'create' | 'update' | 'delete'
+  localId: number
+  payload?: Record<string, unknown>
+  createdAt: number
+  attempts: number
+  nextAttemptAt: number
+}
+
+export type SyncEntity =
+  | 'categories'
+  | 'accounts'
+  | 'members'
+  | 'budgets'
+  | 'goals'
+  | 'bills'
+  | 'shoppingLists'
+  | 'shoppingItems'
+  | 'notes'
+  | 'templates'
+  | 'transactions'
+
+/** Maps a local auto-increment id to the server's UUID once an entity has synced. */
+export interface IdMapEntry {
+  /** `${entity}:${localId}` */
+  key: string
+  entity: SyncEntity
+  localId: number
+  serverId: string
+}
+
+export function idMapKey(entity: SyncEntity, localId: number): string {
+  return `${entity}:${localId}`
+}
+
+export const SYNCABLE_TABLES: SyncEntity[] = [
+  'categories',
+  'accounts',
+  'members',
+  'budgets',
+  'goals',
+  'bills',
+  'shoppingLists',
+  'shoppingItems',
+  'notes',
+  'templates',
+  'transactions',
+]
+
+// Sync is only active for a logged-in account's database, and briefly
+// suspended while bulk-restoring/seeding so that isn't re-queued as "changes".
+let syncActive = false
+let syncSuspended = false
+
+export function setSyncActive(value: boolean): void {
+  syncActive = value
+}
+
+export function withSyncSuspended<T>(fn: () => Promise<T>): Promise<T> {
+  syncSuspended = true
+  return fn().finally(() => {
+    syncSuspended = false
+  })
+}
+
 export class ExpenseDB extends Dexie {
   transactions!: EntityTable<Transaction, 'id'>
   categories!: EntityTable<Category, 'id'>
@@ -25,6 +93,8 @@ export class ExpenseDB extends Dexie {
   shoppingItems!: EntityTable<ShoppingItem, 'id'>
   notes!: EntityTable<Note, 'id'>
   templates!: EntityTable<Template, 'id'>
+  syncQueue!: EntityTable<SyncQueueItem, 'id'>
+  idMap!: EntityTable<IdMapEntry, 'key'>
 
   constructor(name: string) {
     super(name)
@@ -44,8 +114,88 @@ export class ExpenseDB extends Dexie {
     this.version(2).stores({
       templates: '++id, type, createdAt',
     })
+    this.version(3).stores({
+      syncQueue: '++id, entity, localId, nextAttemptAt',
+      idMap: 'key, entity',
+    })
+
+    for (const entity of SYNCABLE_TABLES) {
+      // Cast to `any`: Dexie's overloaded hook() typing doesn't infer cleanly
+      // through a dynamically-selected table, so we bypass it here — this is
+      // internal plumbing, not part of the app's public data types.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const table = this.table(entity) as any
+      const dbInstance = this
+
+      table.hook(
+        'creating',
+        function (
+          this: { onsuccess?: (key: number) => void },
+          _primKey: number,
+          obj: Record<string, unknown>,
+          transaction: any,
+        ) {
+          if (!syncActive || syncSuspended) return
+          // For auto-increment ('++id') tables the real key isn't known yet
+          // when 'creating' fires — it's only available via this.onsuccess.
+          this.onsuccess = (actualKey: number) => {
+            transaction.on('complete', () => {
+              void dbInstance.syncQueue.add({
+                entity,
+                op: 'create',
+                localId: actualKey,
+                payload: { ...obj, id: actualKey },
+                createdAt: Date.now(),
+                attempts: 0,
+                nextAttemptAt: 0,
+              })
+            })
+          }
+        },
+      )
+      table.hook(
+        'updating',
+        (
+          modifications: Record<string, unknown>,
+          primKey: number,
+          _obj: Record<string, unknown>,
+          transaction: any,
+        ) => {
+          if (!syncActive || syncSuspended) return
+          if (!Object.keys(modifications).length) return
+          transaction.on('complete', () => {
+            void this.syncQueue.add({
+              entity,
+              op: 'update',
+              localId: primKey,
+              payload: modifications,
+              createdAt: Date.now(),
+              attempts: 0,
+              nextAttemptAt: 0,
+            })
+          })
+        },
+      )
+      table.hook(
+        'deleting',
+        (primKey: number, _obj: Record<string, unknown>, transaction: any) => {
+          if (!syncActive || syncSuspended) return
+          transaction.on('complete', () => {
+            void this.syncQueue.add({
+              entity,
+              op: 'delete',
+              localId: primKey,
+              createdAt: Date.now(),
+              attempts: 0,
+              nextAttemptAt: 0,
+            })
+          })
+        },
+      )
+    }
   }
 }
+
 
 /** Legacy pre-multi-account database name, used one-time for migration. */
 export const LEGACY_DB_NAME = 'FamilyExpenseTracker'
@@ -72,6 +222,12 @@ export function switchDb(name: string): void {
   current.close()
   current = new ExpenseDB(name)
   switchListeners.forEach((fn) => fn())
+}
+
+/** Permanently deletes a local database (used to wipe an account's data on logout). */
+export async function deleteDb(name: string): Promise<void> {
+  if (current.name === name) current.close()
+  await Dexie.delete(name)
 }
 
 // Every existing `import { db } from './db'` call site keeps working unchanged:

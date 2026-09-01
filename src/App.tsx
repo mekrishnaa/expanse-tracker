@@ -5,7 +5,6 @@ import { PinLock } from './components/PinLock'
 import { AuthGate } from './components/AuthGate'
 import { PWAUpdatePrompt } from './components/PWAUpdatePrompt'
 import { InstallPrompt } from './components/InstallPrompt'
-import { useAutoSync } from './lib/useAutoSync'
 import { useScopeSync } from './lib/useScopeSync'
 
 const Dashboard = lazy(() =>
@@ -60,7 +59,6 @@ function Loader() {
 }
 
 function App() {
-  useAutoSync()
   const { ready, version } = useScopeSync()
   return (
     <PinLock>

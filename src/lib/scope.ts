@@ -1,17 +1,21 @@
 import Dexie from 'dexie'
 import {
   db,
+  deleteDb,
   ExpenseDB,
   GUEST_DB_NAME,
   LEGACY_DB_NAME,
   familyDbName,
+  setSyncActive,
   switchDb,
+  withSyncSuspended,
 } from '../db/db'
 import { seedIfEmpty } from '../db/seed'
 import { runReminderChecks } from './notifications'
 import { useAuth } from '../store/useAuth'
 import { useSettings } from '../store/useSettings'
-import { restoreFromCloud, syncToCloud } from './cloud'
+import { restoreFromCloud } from './cloud'
+import { flushQueue, startSyncEngine } from './sync'
 
 const TABLES = [
   'transactions',
@@ -82,49 +86,71 @@ function scopeKeyFor(user: { familyId: string } | null): string {
 
 /**
  * Points local storage at the correct isolated database for the current
- * account (or guest sandbox), migrating/seeding data the first time it's used
- * on this device. Safe to call repeatedly; only does work when the scope
- * actually changed.
+ * account (or guest sandbox). Guarantees:
+ *  - authenticated users always see their own account's data, fetched fresh
+ *    from the server the first time it's opened after a login;
+ *  - logging out wipes all local data and drops back to a clean guest state;
+ *  - guest data and account data never mix.
+ * Safe to call repeatedly; only does work when the scope actually changed.
  */
 export async function ensureScopeReady(): Promise<void> {
+  startSyncEngine()
+
   const { user } = useAuth.getState()
   const scopeKey = scopeKeyFor(user)
   if (scopeKey === readyForScope) return
 
+  const wasLoggedIn = readyForScope?.startsWith('family:') ?? false
+  const loggingOut = wasLoggedIn && scopeKey === 'guest'
+
   await migrateLegacyDatabaseOnce()
+
+  if (loggingOut) {
+    // Requirement: logging out clears every trace of the account's data from
+    // this device and drops back to a fresh, empty guest state.
+    setSyncActive(false)
+    const previousFamilyDb = readyForScope!.slice('family:'.length)
+    await deleteDb(familyDbName(previousFamilyDb))
+    await deleteDb(GUEST_DB_NAME)
+    switchDb(GUEST_DB_NAME)
+    readyForScope = scopeKey
+    return
+  }
 
   if (user) {
     const targetName = familyDbName(user.familyId)
     const isFirstUseOnDevice = !(await databaseHasData(targetName))
     switchDb(targetName)
+    setSyncActive(true)
 
     if (isFirstUseOnDevice) {
-      // Prefer the account's existing cloud data (e.g. synced from another device).
+      // The server is the source of truth for an authenticated account.
       try {
-        await restoreFromCloud()
+        await withSyncSuspended(() => restoreFromCloud())
       } catch {
-        // offline or no cloud data yet — fall through to local guest migration
+        // offline right after login — fall through to local guest migration/seed
       }
 
-      // If still empty, this may be a guest who just created/logged into an
-      // account on this device — bring their local guest work along and back it up.
+      // If the account truly has nothing yet, this may be a guest who just
+      // signed up on this device — carry their local work into the account
+      // (it will sync to the server normally, like any other change).
       if ((await db.categories.count()) === 0) {
         const guestHasData = await databaseHasData(GUEST_DB_NAME)
-        if (guestHasData) {
-          await copyDatabase(GUEST_DB_NAME, targetName)
-          try {
-            await syncToCloud()
-          } catch {
-            // will sync later via manual/auto sync
-          }
-        }
+        if (guestHasData) await copyDatabase(GUEST_DB_NAME, targetName)
       }
+
+      await seedIfEmpty()
+    } else {
+      // Returning to an account that's still cached locally (no logout in
+      // between) — push anything that didn't make it out before we closed.
+      void flushQueue()
     }
   } else {
+    setSyncActive(false)
     switchDb(GUEST_DB_NAME)
+    await seedIfEmpty()
   }
 
-  await seedIfEmpty()
   readyForScope = scopeKey
 
   if (user && useSettings.getState().remindersEnabled) {

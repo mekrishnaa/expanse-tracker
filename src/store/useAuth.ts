@@ -14,8 +14,6 @@ interface AuthState {
   loading: boolean
   error: string | null
   guestMode: boolean
-  autoSync: boolean
-  lastAutoSync: string | null
   login: (email: string, password: string) => Promise<void>
   register: (
     familyName: string,
@@ -26,8 +24,6 @@ interface AuthState {
   logout: () => Promise<void>
   tryRefresh: () => Promise<boolean>
   continueAsGuest: () => void
-  setAutoSync: (value: boolean) => void
-  markAutoSynced: () => void
   clear: () => void
 }
 
@@ -41,8 +37,6 @@ export const useAuth = create<AuthState>()(
       loading: false,
       error: null,
       guestMode: false,
-      autoSync: false,
-      lastAutoSync: null,
 
       login: async (email, password) => {
         set({ loading: true, error: null })
@@ -111,11 +105,6 @@ export const useAuth = create<AuthState>()(
 
       continueAsGuest: () => set({ guestMode: true }),
 
-      setAutoSync: (value) => set({ autoSync: value }),
-
-      markAutoSynced: () =>
-        set({ lastAutoSync: new Date().toISOString().slice(0, 10) }),
-
       clear: () =>
         set({
           accessToken: null,
@@ -133,8 +122,6 @@ export const useAuth = create<AuthState>()(
         user: s.user,
         family: s.family,
         guestMode: s.guestMode,
-        autoSync: s.autoSync,
-        lastAutoSync: s.lastAutoSync,
       }),
     },
   ),
