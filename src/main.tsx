@@ -3,10 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
-import { seedIfEmpty } from './db/seed'
-import { runReminderChecks } from './lib/notifications'
 import { applyTheme, useSettings } from './store/useSettings'
-import { useAuth } from './store/useAuth'
 import { initInstallListeners } from './store/useInstall'
 
 // Capture the browser's install prompt so we can surface a custom banner.
@@ -25,13 +22,8 @@ window
     }
   })
 
-// Seed default categories/accounts/member on first run.
-seedIfEmpty()
-
-// Fire local reminders for due bills / exceeded budgets (logged-in users only).
-if (useAuth.getState().user && useSettings.getState().remindersEnabled) {
-  runReminderChecks()
-}
+// Data seeding, reminders, and cloud restore run per-account inside
+// useScopeSync (see App.tsx) so each user only ever sees their own data.
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
